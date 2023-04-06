@@ -1,0 +1,14 @@
+name: track-plotter
+title: track-plotter
+username:
+account: dfoo
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 7987916
+bundleId: 6706706
+url: https://dfoo.shinyapps.io/track-plotter/
+when: 1673073858.68129
+lastSyncTime: 1673073858.6813
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: _archive/plot argos locs.R|ArgosData_2023_01_06_22_45_59.csv|ArgosData_2023_01_06_23_12_08.csv|ArgosData_2023_01_06_23_16_12.csv|furseal ptt ids.csv|furseal_argos_locs_5Dec2022.png|ids.R|lnfs - up to 8Dec.png|plot tracks.R|plot.png
