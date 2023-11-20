@@ -18,3 +18,11 @@ file <- list.files(
 )
 shy_deployment <- read_csv(file)
 shy_deployment <- janitor::clean_names(shy_deployment)
+
+
+# all species cleaned data directory
+clean_dir <- "./data/exports/cleaned/"
+ssm_export_dir <- "./data/exports/animotum ssm fits/"
+
+# today's date
+today <- Sys.Date()

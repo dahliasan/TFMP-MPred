@@ -60,6 +60,18 @@ animate_tracks <- function(df, facet = FALSE, facet_scales = "fixed") {
   # animate(p)
 }
 
+animate_and_save <- function(plot, filename, ...) {
+  
+  anim <- plot + 
+    labs(subtitle = "Date: {frame_along}") +
+    transition_reveal(date)
+  anim_render <- animate(anim, width = 700, height = 700, ...)
+  save_animation_results(filename, animation = anim_render)
+  
+  return(anim_render)
+  
+}
+
 plot_tracks <- function(df, shapefile, facet = TRUE, facet_scales = "fixed") {
   # Check if required packages are installed and load them
   required_pkgs <- c("ggplot2", "mapdata", "sf", "marmap")
@@ -102,7 +114,7 @@ plot_tracks <- function(df, shapefile, facet = TRUE, facet_scales = "fixed") {
     p <- p
   } else {
     p <- p +
-      geom_sf(data = shapefile, fill = "#8CBCB9", alpha = 0.3)
+      geom_sf(data = shapefile, fill = "#8CBCB9", color = 'lightblue', alpha = 0.5)
   }
 
   p <- p +
@@ -173,7 +185,7 @@ plot_tracks_tmap <- function(df, shapefile, facet = TRUE) {
   p
 }
 
-readWcLocationsCsv <- function(path, pattern) {
+read_wc_locations_csv <- function(path, pattern) {
   # Install and load the pacman package
   if (!require("pacman")) {
     install.packages("pacman")
@@ -199,7 +211,7 @@ readWcLocationsCsv <- function(path, pattern) {
   return(d)
 }
 
-readLocationsCsv <- function(path, pattern) {
+read_locations_csv <- function(path, pattern) {
   # Install and load the pacman package
   if (!require("pacman")) {
     install.packages("pacman")
@@ -225,20 +237,39 @@ readLocationsCsv <- function(path, pattern) {
   first_df <- read_csv(first_file, id = "file")
   col_names <- colnames(first_df)
 
-  # Read all csv files and bind them together, filling in missing columns with NA
-  d <- lapply(files, function(file) {
-    df <- read_csv(file, id = "file")
-    missing_cols <- setdiff(col_names, colnames(df))
-    for (col in missing_cols) {
-      df[[col]] <- NA
-    }
-    df
-  }) %>% bind_rows()
+  # Read all csv files and bind them together,
+  # filling in missing columns with NA
+  d <- list()
+  error_files <- NULL
+  for (file in files) {
+    tryCatch(
+      {
+        df <- read_csv(file, id = "file")
+        missing_cols <- setdiff(col_names, colnames(df))
+        for (col in missing_cols) {
+          df[[col]] <- NA
+        }
+        d <- bind_rows(d, df)
+      },
+      error = function(e) {
+        error_files <<- c(error_files, file)
+        message(paste0("Error reading file: \n", file, ". \nSkipping file."))
+      }
+    )
+  }
 
-  return(d)
+  if (length(error_files) > 0) {
+    message(paste0("Finished reading files. ", length(error_files), " files skipped due to errors:"))
+    message(error_files)
+  } else {
+    message("Finished reading files. No errors detected.")
+  }
+
+  return(list(d, error_files))
 }
 
-cleanWcLocationsData <- function(d) {
+
+clean_wc_locations <- function(d) {
   # Install and load the pacman package
   if (!require("pacman")) {
     install.packages("pacman")
@@ -276,7 +307,7 @@ cleanWcLocationsData <- function(d) {
   return(d)
 }
 
-cleanCatloggerData <- function(d) {
+clean_catlogger_data <- function(d) {
   # Install and load the pacman package
   if (!require("pacman")) {
     install.packages("pacman")
@@ -300,7 +331,16 @@ cleanCatloggerData <- function(d) {
 
   d <- d %>%
     mutate(datetime = mdy_hms(paste0(date, time)), lc = "G") %>%
-    select(file, id, datetime, latitude, longitude, lc, altitude, satellites) %>%
+    select(
+      file,
+      id,
+      datetime,
+      latitude,
+      longitude,
+      lc,
+      altitude,
+      satellites
+    ) %>%
     rename(date = datetime, lat = latitude, lon = longitude) %>%
     filter(!is.na(lat))
 
@@ -397,8 +437,123 @@ process_ecotone_data <- function(deploy_df, gps_df) {
 
 
 save_plot_results <- function(plot, filename, width = 12, height = 10) {
-  today <- format(Sys.Date(), "%d-%b-%Y")
-  output_filename <- filename # "shearwater_ecotone_1.png"
+  today <- format(Sys.Date(), "%Y%m%d")
+  output_filename <- filename 
   dir.create(paste0("./results/", today))
   ggsave(paste0("./results/", today, "/", output_filename), plot = plot, units = "in", width = width, height = height, dpi = 300)
 }
+
+save_animation_results <- function(filename, ...) {
+  today <- format(Sys.Date(), "%d-%b-%Y")
+  output_filename <- filename
+  dir.create(paste0("./results/", today))
+  anim_save(paste0("./results/", today, "/", output_filename), ...)
+}
+
+
+
+last_date <- function(x) {
+  x$date %>% max() %>% as.Date()
+}
+
+
+
+# file functions -----------------------------------------------------------
+
+# Function to load the latest file
+load_latest_rds <- function(filename, parent_dir = "./results/", force_fit = FALSE) {
+  if (force_fit) {
+    return (NULL)
+  }
+  
+  # Generate the base directory path
+  base_dir <- parent_dir 
+    
+  # List all subdirectories within the base directory
+  date_dirs <- list.dirs(base_dir, recursive = FALSE)
+  
+  # Extract dates from directory names and convert to Date objects
+  dir_dates <- as.Date(basename(date_dirs))
+  
+  # Select the latest date directory
+  latest_date_dir <- date_dirs[which.max(dir_dates)]
+  
+  # Generate the full file path
+  file_path <- file.path(latest_date_dir, filename)
+  
+  # Check if the file already exists
+  if (file.exists(file_path)) {
+    # If the file exists, load the fit
+    file <- read_rds(file_path)
+    message(paste("Existing file loaded from", file_path))
+    return(file)
+  } else {
+    # If the file does not exist, return NULL
+    message("No existing file found.")
+    return(NULL)
+  }
+}
+
+# Function to save a file
+save_rds <- function(file, filename, parent_dir = "./results/") {
+  # Generate the directory path
+  date_dir <- paste0(parent_dir, Sys.Date(), "/")
+  
+  # Check if the directory exists, if not, create it
+  if (!dir.exists(date_dir)) {
+    dir.create(date_dir, recursive = TRUE)
+  }
+  
+  # Generate the full file path
+  file_path <- paste0(date_dir, filename)
+  
+  # Save the file
+  saveRDS(file, file_path)
+  message(paste("File saved to", file_path))
+}
+
+# Function to get the path of the latest file
+get_latest_filepath <- function(filename, parent_dir = "./results/") {
+  # Generate the base directory path
+  base_dir <- parent_dir 
+  
+  # List all subdirectories within the base directory
+  date_dirs <- list.dirs(base_dir, recursive = FALSE)
+  
+  # Extract dates from directory names and convert to Date objects
+  dir_dates <- as.Date(basename(date_dirs))
+  
+  # Select the latest date directory
+  latest_date_dir <- date_dirs[which.max(dir_dates)]
+  
+  # Generate the full file path
+  file_path <- file.path(latest_date_dir, filename)
+  
+  # Check if the file already exists
+  if (file.exists(file_path)) {
+    message(paste("Latest file path:", file_path))
+    return(file_path)
+  } else {
+    message("No existing file found.")
+    return(NULL)
+  }
+}
+
+# Function to generate the path for saving a file
+generate_filepath <- function(filename, parent_dir = "./results/") {
+  # Generate the directory path
+  date_dir <- paste0(parent_dir, Sys.Date(), "/")
+  
+  # Check if the directory exists, if not, create it
+  if (!dir.exists(date_dir)) {
+    dir.create(date_dir, recursive = TRUE)
+  }
+  
+  # Generate the full file path
+  file_path <- paste0(date_dir, filename)
+  
+  message(paste("File path for saving:", file_path))
+  return(file_path)
+}
+
+
