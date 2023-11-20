@@ -444,7 +444,7 @@ save_plot_results <- function(plot, filename, width = 12, height = 10) {
 }
 
 save_animation_results <- function(filename, ...) {
-  today <- format(Sys.Date(), "%d-%b-%Y")
+  today <- format(Sys.Date(), "%Y-%m-%d")
   output_filename <- filename
   dir.create(paste0("./results/", today))
   anim_save(paste0("./results/", today, "/", output_filename), ...)
