@@ -26,8 +26,8 @@ fit <- load_latest_rds("ssm_albatross.rds", ssm_export_dir)
 # If no fit was loaded (fit is NULL), generate a new one and save it
 if (is.null(fit)) {
   fit <- fit_ssm(d1,
-                 time.step = 6,
-                 vmax = 32,
+                 time.step = 1,
+                 vmax = 22.22,
                  control = ssm_control(verbose = 0))
 
   save_rds(fit, "ssm_albatross.rds", ssm_export_dir)
