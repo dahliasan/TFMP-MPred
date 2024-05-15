@@ -46,7 +46,7 @@ for (df in df_names) {
   # If no fit was loaded (fit is NULL), generate a new one and save it
   if (is.null(fit)) {
     fit <- fit_ssm(d1,
-                   time.step = 6,
+                   time.step = 1,
                    vmax = 8,
                    control = ssm_control(verbose = 0)
     )
