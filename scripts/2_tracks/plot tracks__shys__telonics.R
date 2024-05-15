@@ -21,7 +21,7 @@ if(exists("fit")) {
   rm(fit)
 }
 
-fit <- load_latest_rds("ssm_albatross.rds", ssm_export_dir)
+fit <- load_latest_rds("ssm_albatross-telonics.rds", ssm_export_dir)
 
 # If no fit was loaded (fit is NULL), generate a new one and save it
 if (is.null(fit)) {
@@ -30,7 +30,7 @@ if (is.null(fit)) {
                  vmax = 22.22,
                  control = ssm_control(verbose = 0))
 
-  save_rds(fit, "ssm_albatross.rds", ssm_export_dir)
+  save_rds(fit, "ssm_albatross-telonics.rds", ssm_export_dir)
 }
 
 # Get locations from fit
