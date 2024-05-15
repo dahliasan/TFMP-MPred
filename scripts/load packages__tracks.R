@@ -17,6 +17,7 @@ if(!require(aniMotum)) {
 library(sf)
 library(rnaturalearth)
 library(paletteer)
+library(cmocean)
 library(patchwork)
 library(tidyverse)
 library(viridis)
