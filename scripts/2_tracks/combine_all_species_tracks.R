@@ -7,7 +7,7 @@ source("./scripts/utils.R")
 
 
 # Specify the directory containing the .rds files
-dir_path <- "./data/exports/animotum ssm fits/2023-05-16/"
+dir_path <- "./data/exports/animotum ssm fits/2023-11-21/"
 
 # List all .rds files in the directory
 file_list <- list.files(path = dir_path, pattern = "*.rds", full.names = TRUE)
@@ -70,6 +70,7 @@ shear <- stsw_gps %>%
            "long")
   )
 
+shear$breeding_stage <- "chick-rearing"
 
 shear_cat <- stsw_gpsc %>%
   ungroup() %>%
@@ -79,7 +80,21 @@ shear_cat <- stsw_gpsc %>%
 
 
 
+shear_cat$breeding_stage <- "incubation"
+
+# Identify breeding stages ------------------------------------------------
+# classify incubation and chick-rearing stages for albatross
+chickrearing_ids <- shy_deployment %>% 
+  filter(logger_type == "Telonics Sat Tag") %>% 
+  pull(ptt_id) %>% 
+  unique()
+
+ssms <- ssms %>% 
+  mutate(breeding_stage = ifelse(id %in% chickrearing_ids, "chick-rearing", ifelse(species == "shy albatross", "incubation", NA)))
+
+final_combined <- ssms %>% bind_rows(shear, shear_cat) 
+
 
 # Save file ---------------------------------------------------------------
-save_rds(all, filename = "all_species_tracks.rds", "./data/exports/")
+save_rds(final_combined, filename = "all_species_tracks.rds", "./data/exports/")
 
