@@ -72,9 +72,9 @@ animate_and_save <- function(plot, filename, ...) {
   
 }
 
-plot_tracks <- function(df, shapefile, facet = TRUE, facet_scales = "fixed") {
+plot_tracks <- function(df, shapefile, facet = TRUE, facet_scales = "fixed", show_bathy_contour=TRUE, show_bathy_fill=TRUE, x_buffer = 0.5, y_buffer = 0.5) {
   # Check if required packages are installed and load them
-  required_pkgs <- c("ggplot2", "mapdata", "sf", "marmap")
+  required_pkgs <- c("ggplot2", "mapdata", "sf", "marmap", "cmocean")
   missing_pkgs <- required_pkgs[!required_pkgs %in% installed.packages()]
   if (length(missing_pkgs) > 0) {
     # Some packages are missing, install them
@@ -83,10 +83,10 @@ plot_tracks <- function(df, shapefile, facet = TRUE, facet_scales = "fixed") {
   lapply(required_pkgs, require, character.only = TRUE)
 
   # Set map limits
-  min_lon <- min(df$lon) - 0.5
-  max_lon <- max(df$lon) + 0.5
-  min_lat <- min(df$lat) - 0.5
-  max_lat <- max(df$lat) + 0.5
+  min_lon <- min(df$lon) - x_buffer
+  max_lon <- max(df$lon) + x_buffer
+  min_lat <- min(df$lat) - y_buffer
+  max_lat <- max(df$lat) + y_buffer
 
   # Get world map
   map <- map_data("world")
@@ -104,9 +104,25 @@ plot_tracks <- function(df, shapefile, facet = TRUE, facet_scales = "fixed") {
 
   bathy_df <- fortify.bathy(bathy)
 
-  p <- ggplot() +
-    geom_tile(data = bathy_df, aes(x = x, y = y, fill = z)) +
-    geom_contour(data = bathy_df, aes(x, y, z = z), color = "gray50")
+  if(show_bathy_fill){
+    p <- ggplot() +
+      geom_tile(data = bathy_df, aes(x = x, y = y, fill = z)) + 
+      # scale_fill_gradient2(
+      #   low = "#2a363bff", mid = "snow", high = "white",
+      #   guide = guide_colorbar(title = "Depth (m)"),
+      #   na.value = "transparent"
+      # ) 
+      scale_fill_cmocean(
+        name = "deep",
+        na.value = "transparent",
+        direction = "-1"
+      ) 
+  }
+  
+    
+  if(show_bathy_contour){
+    p <- p + geom_contour(data = bathy_df, aes(x, y, z = z), color = "gray50")
+  }
 
 
   # Plot ggplot
@@ -126,11 +142,6 @@ plot_tracks <- function(df, shapefile, facet = TRUE, facet_scales = "fixed") {
     # lims(x = c(min_lon, max_lon), y = c(min_lat, max_lat)) +
     # plot track
     geom_path(data = df, aes(lon, lat), alpha = 0.5) +
-    scale_fill_gradient2(
-      low = "#2a363bff", mid = "snow", high = "white",
-      guide = guide_colorbar(title = "Depth (m)"),
-      na.value = "transparent"
-    ) +
     theme_bw()
 
   if (facet) {
@@ -139,6 +150,23 @@ plot_tracks <- function(df, shapefile, facet = TRUE, facet_scales = "fixed") {
 
   return(p)
 }
+
+
+add_map_limits <- function(p, df, type="coord_sf", x_buffer=0.5, y_buffer=0.5) {
+  min_lon <- min(df$lon) - x_buffer
+  max_lon <- max(df$lon) + x_buffer
+  min_lat <- min(df$lat) - y_buffer
+  max_lat <- max(df$lat) + y_buffer
+  
+  if(type == "coord_sf") {
+    p <- p + coord_sf(xlim = c(min_lon, max_lon), ylim = c(min_lat, max_lat))
+  } else if(type == "lims") {
+    p <- p + lims(x = c(min_lon, max_lon), y = c(min_lat, max_lat))
+  }
+  return(p)
+}
+
+
 
 plot_tracks_tmap <- function(df, shapefile, facet = TRUE) {
   # Install and load the pacman package
@@ -437,7 +465,7 @@ process_ecotone_data <- function(deploy_df, gps_df) {
 
 
 save_plot_results <- function(plot, filename, width = 12, height = 10) {
-  today <- format(Sys.Date(), "%Y%m%d")
+  today <- Sys.Date()
   output_filename <- filename 
   dir.create(paste0("./results/", today))
   ggsave(paste0("./results/", today, "/", output_filename), plot = plot, units = "in", width = width, height = height, dpi = 300)

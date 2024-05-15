@@ -151,3 +151,30 @@ p1 <- p  +
 
 save_plot_results(p1, "all species_tfmp.png", width = 10, height = 15)
  
+
+
+# Plot for BLS8 Poster ----------------------------------------------------
+
+
+
+
+p <- plot_tracks(plot_data, facet = FALSE, show_bathy_contour = FALSE, x_buffer=2, y_buffer = 2)
+
+p1 <- p + 
+  geom_path(data = plot_data,
+            aes(x = lon, y = lat, group = id), color = "#DF2935") +
+  geom_sf(data = tfmp, fill = NA, color = '#F5F3BB', alpha = 1, lwd=.5) + 
+  publication_theme() + 
+  facet_wrap(~species, ncol=4) 
+
+p1 <- add_map_limits(p1, plot_data, type="lims", x_buffer=2, y_buffer=2)
+
+p1 <- p1 + 
+  # remove legends
+  theme(legend.position = "none")  +
+  labs(x = "Longitude", y = "Latitude", title = "All Species", caption = "STSW antarctic trips excluded")
+
+
+p1
+
+save_plot_results(p1, "all species (for bls8 poster).png", width = 12, height = 12)
