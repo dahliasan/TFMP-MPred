@@ -15,6 +15,7 @@ if(!require(aniMotum)) {
 
 # Load libraries for plotting tracks
 library(sf)
+library(trip)
 library(rnaturalearth)
 library(paletteer)
 library(cmocean)
