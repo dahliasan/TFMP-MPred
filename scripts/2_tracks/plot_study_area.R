@@ -1,4 +1,4 @@
-source('./scripts/load packages__tracks.R')
+source('./scripts/load_packages_for_tracks.R')
 
 
 # Get Tasmania shapefile from the 'rnaturalearth' package
@@ -47,6 +47,7 @@ p2 <- ggplot() +
 
 # Combine p1 and p2 side by side
 combined_plot <- p1 + p2 + plot_layout(ncol = 2)
+combined_plot
 
 
 # Save plot as PNG file

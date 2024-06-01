@@ -1,108 +1,70 @@
 
 # Plot all species map
 
-source("./scripts/load packages__tracks.R")
+source("./scripts/load_packages_for_tracks.R")
 source("./scripts/tfmp_functions.R")
 source("./scripts/ids.R")
 source("./scripts/utils.R")
 
-
-# Specify the directory containing the .rds files
-dir_path <- "./data/exports/animotum ssm fits/2023-05-16/"
-
-# List all .rds files in the directory
-file_list <- list.files(path = dir_path, pattern = "*.rds", full.names = TRUE)
-
-ssms <- purrr::map(file_list, function(file) {
-  ssm <- read_rds(file)
-  ssm <- grab(ssm, what = "predicted")
-
-  # detect species
-  if(str_detect(file, "adult")) {
-    specie <- "adult female"
-  }  else if(str_detect(file, "juv")) {
-    specie <- "juvenile"
-  } else if(str_detect(file, "albatross")) {
-    specie <- "shy albatross"
-  } else if(str_detect(file, "stsw")) {
-    specie <- "short-tailed shearwater"
-  }
-
-  # detect fur seals species
-  if(specie == "adult female" | specie == "juvenile") {
-    # adult females detected
-    ssm <- ssm %>%
-      mutate(file = file) %>%
-      dplyr::select(id, date, lon, lat)
-
-    id <- furseals %>%
-      filter(age_group == specie) %>%
-      dplyr::select(id, species, age_group)
-
-    ssm <- ssm %>% left_join(id)
-    
-    return(ssm)
-  }
-
-  ssm <- ssm %>%
-    mutate(file = file, species = specie, age_group = "adult") %>%
-    dplyr::select(id, date, lon, lat, species, age_group)
-
-  return(ssm)
-}) %>% 
-  bind_rows()
+locs <- load_latest_rds(filename = "all_species_tracks.rds")
 
 
+# Create breeding stage grouping ------------------------------------------
+# For seals, we want to group by age_group, for birds we want to group by breeding_stage
 
-# Load shearwater ---------------------------------------------------------
-
-load("./data/exports/cleaned/stsw_gps_ecotone.RData")
-load("./data/exports/cleaned/stsw_gpsc.RData")
-
-
-shear <- stsw_gps %>%
-  ungroup() %>%
-  select(id, date, lat, lon, trip_max_distance) %>% 
-  mutate(species = "short-tailed shearwater", 
-         age_group = "adult", 
-         trip_type = ifelse(
-           trip_max_distance < 500000,
-           "short",
-           "long")
-         )
-  
-
-shear_cat <- stsw_gpsc %>%
-  ungroup() %>%
-  select(id, date, lat, lon) %>% 
-  mutate(species = "short-tailed shearwater", 
-         age_group = "adult")
+locs <- locs %>% 
+  mutate(facet_group = case_when(
+    species %in% c("short-tailed shearwater", "shy albatross") ~ paste(species, "-", breeding_stage),
+    species %in% c("LNFS", "AUSFS") ~ paste("fur seals -", age_group)
+  ))
 
 
 # Plot all species --------------------------------------------------------
 
-all <- ssms %>% 
-  bind_rows(shear) %>% 
-  bind_rows(shear_cat)
+locs_local <- locs %>% filter(!trip_type %in% "long")
 
-all %>% group_by(species, age_group) %>% 
-  summarise(n_individuals = unique(id) %>% length())
+locs_local_sf <- locs_local %>% 
+  st_as_sf(coords = c("lon", "lat"), crs = 4326, remove = F)
 
-plot_data <- all %>% 
-  filter(trip_type != "long" | is.na(trip_type))
+plot_data_split <- locs_local_sf %>% group_by(facet_group) %>% group_split()
 
-p <- plot_tracks(plot_data, tfmp, facet = FALSE)
+plot_list <- plot_data_split %>% 
+  purrr::map(
+    function(x) {
+      p <- x %>% 
+        ggplot() + 
+        geom_sf(data = se_network, colour = 'firebrick1', fill = "firebrick1", linewidth = .1, alpha = .1) +
+        geom_sf(data = oz) + 
+        geom_path(aes(x = lon, y = lat, group = id, color = species), 
+                  lwd = .5,
+                  na.rm = TRUE) +
+        get_coord_lims(locs_local_sf) +
+        theme(
+          axis.text = element_blank(),
+          axis.ticks = element_blank(), 
+          panel.grid = element_blank(),
+          axis.title = element_blank(),
+          # set background colour
+          panel.background = element_rect(fill = "#fefefe"),
+        ) + 
+        scale_colour_manual(values = c("black", "dodgerblue3")) +
+        facet_wrap(~facet_group) + 
+        labs(caption = paste0("N=", n_distinct(x$id))) 
+      
+      # if facet_group does not contain fur seals remove legend
+      if (!grepl("fur seals", unique(x$facet_group))) {
+        p <- p + theme(legend.position = "none")
+      }
+      
+      return(p)
+    }
+  )
 
-p1 <- p  +
-  geom_path(data = plot_data, 
-            aes(x = lon, y = lat, group = id, color = species), 
-            lwd = .75,
-            na.rm = TRUE) +
-  publication_theme() +
-  scale_color_brewer(na.value = NA, type = 'div', palette = 4) + 
-  labs(x = "lon", y = "lat", title = "All Species")
+plot_list[[2]]
 
-save_plot_results(p1, "all species.png", width = 12, height = 12)
+p1 <- ggpubr::ggarrange(plotlist = plot_list, align = "hv", ncol = 2, nrow = 3)
+
+save_plot_results(p1, "all species.png", width = 8, height = 10, bg = "white")
 
 
 p1 <- p  +

@@ -1,8 +1,6 @@
 # plot tracks
 
-source("scripts/1_clean/clean tracks__furseals.R")
-
-
+source("scripts/1_clean/clean_tracks_wc_furseals.R")
 
 df_names <- c("juv", "adult")
 output_list <- list()
