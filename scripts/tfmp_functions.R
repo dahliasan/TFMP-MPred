@@ -72,6 +72,38 @@ animate_and_save <- function(plot, filename, ...) {
   
 }
 
+plot_locs_sf <- function(locs, buffer = 0.5) {
+  
+  oz <- rnaturalearth::ne_countries(scale= 10, country = "Australia", returnclass = "sf")
+  
+  lsf <- locs %>% 
+    st_as_sf(coords= c("lon","lat")) %>% # make spatial
+    st_set_crs(st_crs(4326)) #set crs - basics one. 
+  
+  lsf_bbox <- st_bbox(lsf)
+  xlim <- c(lsf_bbox$xmin - buffer, lsf_bbox$xmax + buffer)
+  ylim <- c(lsf_bbox$ymin - buffer, lsf_bbox$ymax + buffer)
+  
+  p <- ggplot() +
+    geom_sf(data = oz, size = 0.5) +
+    geom_sf(data = lsf, size = 0.5) + 
+    coord_sf(crs = 4326, xlim = xlim, ylim = ylim)
+  
+  return(p)
+}
+
+get_coord_lims <- function(locs, buffer = 0.5) {
+  lsf <- locs %>% 
+    st_as_sf(coords= c("lon","lat")) %>% # make spatial
+    st_set_crs(st_crs(4326)) #set crs - basics one. 
+  
+  lsf_bbox <- st_bbox(lsf)
+  xlim <- c(lsf_bbox$xmin - buffer, lsf_bbox$xmax + buffer)
+  ylim <- c(lsf_bbox$ymin - buffer, lsf_bbox$ymax + buffer)
+
+  return(coord_sf(crs = 4326, xlim = xlim, ylim = ylim))
+}
+
 plot_tracks <- function(df, shapefile, facet = TRUE, facet_scales = "fixed", show_bathy_contour=TRUE, show_bathy_fill=TRUE, x_buffer = 0.5, y_buffer = 0.5) {
   # Check if required packages are installed and load them
   required_pkgs <- c("ggplot2", "mapdata", "sf", "marmap", "cmocean")
@@ -151,7 +183,6 @@ plot_tracks <- function(df, shapefile, facet = TRUE, facet_scales = "fixed", sho
   return(p)
 }
 
-
 add_map_limits <- function(p, df, type="coord_sf", x_buffer=0.5, y_buffer=0.5) {
   min_lon <- min(df$lon) - x_buffer
   max_lon <- max(df$lon) + x_buffer
@@ -165,8 +196,6 @@ add_map_limits <- function(p, df, type="coord_sf", x_buffer=0.5, y_buffer=0.5) {
   }
   return(p)
 }
-
-
 
 plot_tracks_tmap <- function(df, shapefile, facet = TRUE) {
   # Install and load the pacman package
@@ -296,7 +325,6 @@ read_locations_csv <- function(path, pattern) {
   return(list(d, error_files))
 }
 
-
 clean_wc_locations <- function(d) {
   # Install and load the pacman package
   if (!require("pacman")) {
@@ -330,7 +358,6 @@ clean_wc_locations <- function(d) {
   # Parse column types
   d$id <- as.character(d$id)
   d$date <- parse_date_time(d$date, "HMSdbY")
-
 
   return(d)
 }
@@ -380,18 +407,6 @@ clean_catlogger_data <- function(d) {
 
   return(d)
 }
-
-
-publication_theme <- function() {
-  theme(
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-  )
-}
-
-
-
-
 
 # Ecotone shearwater functions --------------------------------------------
 
@@ -464,11 +479,11 @@ process_ecotone_data <- function(deploy_df, gps_df) {
 }
 
 
-save_plot_results <- function(plot, filename, width = 12, height = 10) {
+save_plot_results <- function(plot, filename, width = 12, height = 10, ...) {
   today <- Sys.Date()
   output_filename <- filename 
   dir.create(paste0("./results/", today))
-  ggsave(paste0("./results/", today, "/", output_filename), plot = plot, units = "in", width = width, height = height, dpi = 300)
+  ggsave(paste0("./results/", today, "/", output_filename), plot = plot, units = "in", width = width, height = height, dpi = 300, ...)
 }
 
 save_animation_results <- function(filename, ...) {
@@ -488,27 +503,11 @@ last_date <- function(x) {
 
 # file functions -----------------------------------------------------------
 
-# Function to load the latest file
-load_latest_rds <- function(filename, parent_dir = "./results/", force_fit = FALSE) {
-  if (force_fit) {
-    return (NULL)
-  }
-  
-  # Generate the base directory path
-  base_dir <- parent_dir 
-    
-  # List all subdirectories within the base directory
-  date_dirs <- list.dirs(base_dir, recursive = FALSE)
-  
-  # Extract dates from directory names and convert to Date objects
-  dir_dates <- as.Date(basename(date_dirs))
-  
-  # Select the latest date directory
-  latest_date_dir <- date_dirs[which.max(dir_dates)]
-  
-  # Generate the full file path
-  file_path <- file.path(latest_date_dir, filename)
-  
+# Function to load the latest based on date created
+load_latest_rds <- function(filename) {
+
+  file_path <- get_latest_filepath(filename)
+
   # Check if the file already exists
   if (file.exists(file_path)) {
     # If the file exists, load the fit
@@ -520,6 +519,7 @@ load_latest_rds <- function(filename, parent_dir = "./results/", force_fit = FAL
     message("No existing file found.")
     return(NULL)
   }
+  
 }
 
 # Function to save a file
@@ -541,30 +541,26 @@ save_rds <- function(file, filename, parent_dir = "./results/") {
 }
 
 # Function to get the path of the latest file
-get_latest_filepath <- function(filename, parent_dir = "./results/") {
-  # Generate the base directory path
-  base_dir <- parent_dir 
+get_latest_filepath <- function(filename) {
   
-  # List all subdirectories within the base directory
-  date_dirs <- list.dirs(base_dir, recursive = FALSE)
+  files <- list.files(pattern=filename, recursive = TRUE)
   
-  # Extract dates from directory names and convert to Date objects
-  dir_dates <- as.Date(basename(date_dirs))
-  
-  # Select the latest date directory
-  latest_date_dir <- date_dirs[which.max(dir_dates)]
-  
-  # Generate the full file path
-  file_path <- file.path(latest_date_dir, filename)
-  
-  # Check if the file already exists
-  if (file.exists(file_path)) {
-    message(paste("Latest file path:", file_path))
-    return(file_path)
-  } else {
-    message("No existing file found.")
-    return(NULL)
+  if (length(files) == 0) {
+    stop("No files found")
   }
+  
+  # Get the latest file based on the date created
+  file_mtimes <- purrr::map_chr(files, ~ file.mtime(.x) %>% as.character) %>% as.Date() 
+  
+  message(paste("found files created on...", paste(file_mtimes, collapse = ", ")))
+  
+  index <- file_mtimes %>% which.max()
+  
+  latest_filepath <- files[index]
+  
+  message(paste("Latest file path:", latest_filepath))
+  
+  return(latest_filepath)
 }
 
 # Function to generate the path for saving a file
