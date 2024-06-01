@@ -1,6 +1,6 @@
 # Combine all species tracks
 
-source("./scripts/load packages__tracks.R")
+source("./scripts/load_packages_for_tracks.R")
 source("./scripts/tfmp_functions.R")
 source("./scripts/ids.R")
 source("./scripts/utils.R")
@@ -54,6 +54,7 @@ ssms <- purrr::map(file_list, function(file) {
 
 
 # Load shearwater ---------------------------------------------------------
+# Shearwaters use GPS so no need to fit SSM. We can directly load the data
 
 load("./data/exports/cleaned/stsw_gps_ecotone.RData")
 load("./data/exports/cleaned/stsw_gpsc.RData")
