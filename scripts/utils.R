@@ -26,3 +26,18 @@ ssm_export_dir <- "./data/exports/animotum ssm fits/"
 
 # today's date
 today <- Sys.Date()
+
+
+oz <- rnaturalearth::ne_countries(scale= 10, country = "Australia", returnclass = "sf")
+
+
+publication_theme <-  theme(
+  panel.grid.major = element_blank(),
+  panel.grid.minor = element_blank(),
+)
+
+mytheme <-  theme(
+  # set background colour
+  panel.background = element_rect(fill = "#fefefe"),
+) 
+
