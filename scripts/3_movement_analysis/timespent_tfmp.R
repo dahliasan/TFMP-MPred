@@ -3,14 +3,14 @@
 rm(list = ls())
 
 # Load required packages
-source("./scripts/load packages__tracks.R")
+source("./scripts/load_packages_for_tracks.R")
 source("./scripts/tfmp_functions.R")
 source("./scripts/utils.R")
 library(sf)
 
 
 # Load data
-tracks <- load_latest_rds("./all_species_tracks.rds", "./data/exports/") %>% 
+tracks <- load_latest_rds(filename = "all_species_tracks.rds") %>% 
   dplyr::select(-trip_max_distance)
 
 # Convert tracks to a spatial object
